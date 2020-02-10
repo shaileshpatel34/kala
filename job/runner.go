@@ -51,7 +51,7 @@ func (j *JobRunner) Run(cache JobCache) (*JobStat, Metadata, error) {
 		if j.job.JobType == LocalJob {
 			err = j.LocalRun()
 		} else if j.job.JobType == RemoteJob {
-			err = j.RemoteRun()
+			err = j.RemoteRun(j.job.Id)
 		} else {
 			err = ErrJobTypeInvalid
 		}
@@ -109,7 +109,7 @@ func (j *JobRunner) LocalRun() error {
 }
 
 // RemoteRun sends a http request, and checks if the response is valid in time,
-func (j *JobRunner) RemoteRun() error {
+func (j *JobRunner) RemoteRun(jobid string) error {
 	// Calculate a response timeout
 	timeout := j.responseTimeout()
 
@@ -122,7 +122,8 @@ func (j *JobRunner) RemoteRun() error {
 	// Normalize the method passed by the user
 	method := strings.ToUpper(j.job.RemoteProperties.Method)
 	bodyBuffer := bytes.NewBufferString(j.job.RemoteProperties.Body)
-	req, err := http.NewRequest(method, j.job.RemoteProperties.Url, bodyBuffer)
+
+	req, err := http.NewRequest(method, j.job.RemoteProperties.Url+"?jobid="+jobid, bodyBuffer)
 	if err != nil {
 		return err
 	}

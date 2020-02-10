@@ -27,18 +27,18 @@ func init() {
 	App = cli.NewApp()
 	App.Name = "Kala"
 	App.Usage = "Modern job scheduler"
-	App.Commands = []cli.Command{
+	App.Commands = []*cli.Command{
 		{
 			Name:  "run_command",
 			Usage: "Run a command as if it was being run by Kala",
-			Action: func(c *cli.Context) {
-				if len(c.Args()) == 0 {
+			Action: func(c *cli.Context) error {
+				if c.NArg() == 0 {
 					log.Fatal("Must include a command")
-				} else if len(c.Args()) > 1 {
+				} else if c.NArg() > 1 {
 					log.Fatal("Must only include a command")
 				}
 
-				cmd := c.Args()[0]
+				cmd := c.Args().Get(0)
 
 				j := &job.Job{
 					Command: cmd,
@@ -47,77 +47,79 @@ func init() {
 				err := j.RunCmd()
 				if err != nil {
 					log.Fatalf("Command Failed with err: %s", err)
+					return err
 				} else {
 					fmt.Println("Command Succeeded!")
 				}
+				return nil
 			},
 		},
 		{
 			Name:  "run",
 			Usage: "run kala",
 			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:   "port, p",
-					EnvVar: "KALA_PORT",
-					Value:  ":8000",
-					Usage:  "Port for Kala to run on.",
+				&cli.StringFlag{
+					Name:    "port, p",
+					EnvVars: []string{"KALA_PORT"},
+					Value:   ":8000",
+					Usage:   "Port for Kala to run on.",
 				},
-				cli.BoolFlag{
+				&cli.BoolFlag{
 					Name:  "no-persist, np",
 					Usage: "No Persistence Mode - In this mode no data will be saved to the database. Perfect for testing.",
 				},
-				cli.StringFlag{
-					Name:   "interface, i",
-					EnvVar: "KALA_INTERFACE",
-					Value:  "",
-					Usage:  "Interface to listen on, default is all.",
+				&cli.StringFlag{
+					Name:    "interface, i",
+					EnvVars: []string{"KALA_INTERFACE"},
+					Value:   "",
+					Usage:   "Interface to listen on, default is all.",
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:  "default-owner, do",
 					Value: "",
 					Usage: "Default owner. The inputted email will be attached to any job missing an owner",
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:  "jobDB",
 					Value: "boltdb",
 					Usage: "Implementation of job database, either 'boltdb', 'redis', 'mongo', 'consul', or 'postgres'.",
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:  "boltpath",
 					Value: "",
 					Usage: "Path to the bolt database file, default is current directory.",
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:  "jobDBAddress",
 					Value: "",
 					Usage: "Network address for the job database, in 'host:port' format.",
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:  "jobDBUsername",
 					Value: "",
 					Usage: "Username for the job database, in 'username' format. Currently only needed for Mongo.",
 				},
-				cli.StringFlag{
+				&cli.StringFlag{
 					Name:  "jobDBPassword",
 					Value: "",
 					Usage: "Password for the job database, in 'password' format.",
 				},
-				cli.BoolFlag{
+				&cli.BoolFlag{
 					Name:  "verbose, v",
 					Usage: "Set for verbose logging.",
 				},
-				cli.IntFlag{
+				&cli.IntFlag{
 					Name:  "persist-every",
 					Value: 5,
 					Usage: "Sets the persisWaitTime in seconds",
 				},
-				cli.IntFlag{
+				&cli.IntFlag{
 					Name:  "jobstat-ttl",
 					Value: -1,
 					Usage: "Sets the jobstat-ttl in minutes. The default -1 value indicates JobStat entries will be kept forever",
 				},
 			},
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				if c.Bool("v") {
 					log.SetLevel(log.DebugLevel)
 				}
@@ -184,6 +186,7 @@ func init() {
 				log.Infof("Starting server on port %s", connectionString)
 				srv := api.MakeServer(connectionString, cache, db, c.String("default-owner"))
 				log.Fatal(srv.ListenAndServe())
+				return nil
 			},
 		},
 	}
